@@ -41,45 +41,11 @@
 with multiple categorical Emissionsignals.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="hmm.MultiCatEmissionHMM">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hmm.</span></span><span class="sig-name descname"><span class="pre">MultiCatEmissionHMM</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">init_pi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_A</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_Bs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_emission_symbols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hmm.MultiCatEmissionHMM" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hmm.</span></span><span class="sig-name descname"><span class="pre">MultiCatEmissionHMM</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">init_pi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_A</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_Bs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_emission_symbols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hmm.MultiCatEmissionHMM" title="Permalink to this definition">¶</a></dt>
 <dd><p>Hidden Markov Model with Multiple Categorical Emissions.
 This class represents a Hidden Markov Model (HMM) where the emissions are modeled
 as distinct Categorical distributions. The HMM consists of a set of states, transition
 probabilities between states, initial state probabilities, and multiple emission matrices.</p>
-<dl class="simple">
-<dt>init_pi<span class="classifier">numpy.ndarray</span></dt><dd><p>The initial state probabilities. A 1-D array of shape (num_states,).</p>
-</dd>
-<dt>init_A<span class="classifier">numpy.ndarray</span></dt><dd><p>The state transition probability matrix. A 2-D array of shape (num_states, num_states).</p>
-</dd>
-<dt>init_Bs<span class="classifier">numpy.ndarray</span></dt><dd><p>The emission matrices for each state. A 2-D array of shape (num_states, sum(num_emission_symbols)) of concatenated
-emission matrices.</p>
-</dd>
-<dt>num_emission_symbols<span class="classifier">List[int]</span></dt><dd><p>A list containing the num_emission_symbols of individual sequences in the dataset.</p>
-</dd>
-</dl>
-<dl class="simple">
-<dt>pi<span class="classifier">numpy.ndarray</span></dt><dd><p>The initial state probabilities. A 1-D array of shape (num_states,).</p>
-</dd>
-<dt>A<span class="classifier">numpy.ndarray</span></dt><dd><p>The state transition probability matrix. A 2-D array of shape (num_states, num_states).</p>
-</dd>
-<dt>Bs<span class="classifier">numpy.ndarray</span></dt><dd><p>The emission matrices for each state. A 3-D array of shape (num_states, num_categories, num_categories).
-Each slice Bs[i] represents the emission matrix for state i.</p>
-</dd>
-<dt>num_emission_symbols<span class="classifier">List[int]</span></dt><dd><p>A list containing the num_emission_symbols of individual sequences in the dataset.</p>
-</dd>
-<dt>num_states<span class="classifier">int</span></dt><dd><p>The number of states in the Hidden Markov Model.</p>
-</dd>
-</dl>
-<dl class="simple">
-<dt>predict(Ys: numpy.ndarray) -&gt; numpy.ndarray:</dt><dd><p>Predict the posterior distribution <span class="math notranslate nohighlight">\(p(X|Ys, \theta)\)</span> over the hidden states, given some observations.</p>
-</dd>
-<dt>update_mv(x_tm1: numpy.ndarray, y_t: Sequence[int]) -&gt; numpy.ndarray:</dt><dd><p>Update the hidden state distribution based on the current observation.</p>
-</dd>
-<dt>_predict(x_tm1: numpy.ndarray) -&gt; numpy.ndarray:</dt><dd><p>Predict the next hidden state probabilities based on the current state.</p>
-</dd>
-<dt>likelihood(y_i: numpy.ndarray) -&gt; numpy.ndarray:</dt><dd><p>Calculate the likelihood of an observation sequence for each hidden state.</p>
-</dd>
-</dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="hmm.MultiCatEmissionHMM.fit">
 <span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#hmm.MultiCatEmissionHMM.fit" title="Permalink to this definition">¶</a></dt>
@@ -90,107 +56,112 @@ Each slice Bs[i] represents the emission matrix for state i.</p>
 <dt class="sig sig-object py" id="hmm.MultiCatEmissionHMM.likelihood">
 <span class="sig-name descname"><span class="pre">likelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#hmm.MultiCatEmissionHMM.likelihood" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the conditional likelihood p(Y_t|X_t) of an observation sequence for each hidden state.</p>
-<dl class="simple">
-<dt>y_i<span class="classifier">numpy.ndarray</span></dt><dd><p>Observation sequence for the emission matrices.</p>
+<p>Calculate the conditional likelihood p(Y_t|X_t) of an observation sequence for each hidden state.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>y_i</strong> (<em>np.ndarray</em>) – Observation sequence for the emission matrices.</p>
 </dd>
-</dl>
-<dl class="simple">
-<dt>numpy.ndarray</dt><dd><p>The product of likelihoods for the observation sequence for each hidden state.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The product of likelihoods for the observation sequence for each hidden state.</p>
 </dd>
-</dl>
-<p>This method calculates the likelihood of an observation sequence for each hidden state.
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+<dt class="field-even">Notes<span class="colon">:</span></dt>
+<dd class="field-even"><p>This method calculates the likelihood of an observation sequence for each hidden state.
 The observation sequence corresponds to the emission matrices.</p>
 <p>The likelihood is computed by taking the product of the probabilities of each observation
 given the emission matrix for the corresponding hidden state.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="hmm.MultiCatEmissionHMM.predict">
-<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Ys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#hmm.MultiCatEmissionHMM.predict" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Ys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#hmm.MultiCatEmissionHMM.predict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Predict the posterior distribution <span class="math notranslate nohighlight">\(p(X|Ys, \theta)\)</span> over the hidden
 states, given some observations.</p>
-<dl class="simple">
-<dt>Ys<span class="classifier">numpy.ndarray</span></dt><dd><p>The list of observations. Each observation comes from an individual
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>Ys</strong> (<em>np.ndarray</em>) – The list of observations. Each observation comes from an individual
 Categorical distribution. Shape should be (D, sum(self.num_emission_symbols)).</p>
 </dd>
-</dl>
-<dl class="simple">
-<dt>numpy.ndarray</dt><dd><p>Posterior probabilities over hidden states. Entry [t, i] denotes the
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Posterior probabilities over hidden states. Entry [t, i] denotes the
 probability of being in state i at timestep t, given all the data
 <span class="math notranslate nohighlight">\(p(X_t = i|Ys, \theta)\)</span>.</p>
 </dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
 </dl>
-<p>This method uses filtering and updating routines to calculate the posterior
-distribution over hidden states based on the provided observations.</p>
-<p>The algorithm iterates over timesteps, updating and predicting the hidden
-state probabilities. The final result is the posterior probabilities over
-hidden states given all the observations.</p>
-<p><a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
-# Assuming ‘model’ is an instance of MultiCatEmissionHMM</p>
-<p># number of discrete emission symbols
-num_symbols = 3 
-observations = np.array([[1, 0, 2], [0, 1, 0], [3, 0, 1]])
-result = model.predict(observations)
-<a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
-<p>In this example, ‘result’ would contain the posterior probabilities over
-hidden states based on the provided observations.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="hmm.MultiCatEmissionHMM.smooth">
 <span class="sig-name descname"><span class="pre">smooth</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_tp1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">updates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">predictions</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#hmm.MultiCatEmissionHMM.smooth" title="Permalink to this definition">¶</a></dt>
 <dd><p>Perform smoothing to estimate the hidden state probabilities at time t.</p>
-<dl class="simple">
-<dt>t<span class="classifier">int</span></dt><dd><p>The timestep for which smoothing is performed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t</strong> (<em>int</em>) – The timestep for which smoothing is performed.</p></li>
+<li><p><strong>x_tp1</strong> (<em>np.ndarray</em>) – The posterior probability distribution over hidden states at time t+1.</p></li>
+<li><p><strong>updates</strong> (<em>List</em><em>[</em><em>np.ndarray</em><em>]</em>) – List containing the filtered posterior probability distributions for each timestep.</p></li>
+<li><p><strong>predictions</strong> (<em>List</em><em>[</em><em>np.ndarray</em><em>]</em>) – List containing the predicted posterior probability distributions for each timestep.</p></li>
+</ul>
 </dd>
-<dt>x_tp1<span class="classifier">numpy.ndarray</span></dt><dd><p>The posterior probability distribution over hidden states at time t+1.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The smoothed posterior probability distribution over hidden states at time t.</p>
 </dd>
-<dt>updates<span class="classifier">List[numpy.ndarray]</span></dt><dd><p>List containing the filtered posterior probability distributions for each timestep.</p>
-</dd>
-<dt>predictions<span class="classifier">List[numpy.ndarray]</span></dt><dd><p>List containing the predicted posterior probability distributions for each timestep.</p>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
 </dd>
 </dl>
-<dl class="simple">
-<dt>numpy.ndarray</dt><dd><p>The smoothed posterior probability distribution over hidden states at time t.</p>
-</dd>
-</dl>
-<p>This method performs smoothing to estimate the hidden state probabilities at time t
-based on the filtered and predicted posterior distributions.</p>
-<p>The smoothing is done by combining the filtered distribution at time t and the predicted
-distribution at time t+1 using the transition probability matrix. The result is the
-smoothed posterior probability distribution over hidden states at time t.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="hmm.MultiCatEmissionHMM.update_mv">
 <span class="sig-name descname"><span class="pre">update_mv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x_tm1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#hmm.MultiCatEmissionHMM.update_mv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update the hidden state distribution based on the current observation.</p>
-<dl class="simple">
-<dt>x_tm1<span class="classifier">numpy.ndarray</span></dt><dd><p>Vector of hidden state distribution from timestep t-1.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x_tm1</strong> (<em>np.ndarray</em>) – Vector of hidden state distribution from timestep t-1.</p></li>
+<li><p><strong>y_t</strong> (<em>Sequence</em><em>[</em><em>int</em><em>]</em>) – Sequence of integers, where each integer at index i corresponds to the observation
+for the emission matrix at index i.</p></li>
+</ul>
 </dd>
-<dt>y_t<span class="classifier">Sequence[int]</span></dt><dd><p>Sequence of integers, where each integer at index i corresponds to the observation
-for the emission matrix at index i.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The updated posterior probability distribution over hidden states at time t.</p>
 </dd>
-</dl>
-<dl class="simple">
-<dt>numpy.ndarray</dt><dd><p>The updated posterior probability distribution over hidden states at time t.</p>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
 </dd>
-</dl>
-<p>This method updates the hidden state distribution at time t based on the current observation.</p>
+<dt class="field-even">Notes<span class="colon">:</span></dt>
+<dd class="field-even"><p>This method updates the hidden state distribution at time t based on the current observation.</p>
 <p>The update is performed by multiplying the likelihood of the observation given each hidden state
 (calculated using the emission matrices) with the prior probability distribution over hidden states
 from the previous timestep. The result is the unnormalized posterior probability distribution over
 hidden states at time t.</p>
 <p>In this example, ‘result’ would contain the updated posterior probability distribution over
 hidden states at the current timestep based on the input observation sequence.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="hmm.MultiCatEmissionHMM.viterbi_mv">
-<span class="sig-name descname"><span class="pre">viterbi_mv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Ys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#hmm.MultiCatEmissionHMM.viterbi_mv" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="hmm.MultiCatEmissionHMM.viterbi">
+<span class="sig-name descname"><span class="pre">viterbi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Ys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#hmm.MultiCatEmissionHMM.viterbi" title="Permalink to this definition">¶</a></dt>
 <dd><p>Viterbi algorithm for multivariate discrete emissions.</p>
-<p>NOTE: observations are of shape (N, D) where D is the number of emission signals.
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>Ys</strong> (<em>np.ndarray</em>) – nd array containing observations. Shape: (N, D)</p>
+</dd>
+<dt class="field-even">Notes<span class="colon">:</span></dt>
+<dd class="field-even"><p>Observations are of shape (N, D) where D is the number of emission signals.
 The ordering of these signals MUST correspond to the ordering in the list of emission matrices.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>

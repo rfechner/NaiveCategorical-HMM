@@ -7,7 +7,6 @@ with multiple categorical Emissionsignals.
 
 import numpy as np
 
-from numpy.typing import NDArray
 from typing import List, Sequence
 from sklearn.base import BaseEstimator
 
@@ -17,77 +16,52 @@ class MultiCatEmissionHMM(BaseEstimator):
     This class represents a Hidden Markov Model (HMM) where the emissions are modeled
     as distinct Categorical distributions. The HMM consists of a set of states, transition
     probabilities between states, initial state probabilities, and multiple emission matrices.
-
-    Parameters:
-    -----------
-    *init_pi* : numpy.ndarray
-        The initial state probabilities. A 1-D array of shape (num_states,).
-        
-    init_A : numpy.ndarray
-        The state transition probability matrix. A 2-D array of shape (num_states, num_states).
-
-    init_Bs : numpy.ndarray
-        The emission matrices for each state. A 2-D array of shape (num_states, sum(num_emission_symbols)) of concatenated
-        emission matrices.
-
-    num_emission_symbols : List[int]
-        A list containing the num_emission_symbols of individual sequences in the dataset.
     """
     
-    def __init__(self, init_pi : NDArray, init_A : NDArray, init_Bs : NDArray, num_emission_symbols : List[int]):        
-        self.pi : NDArray = init_pi
-        self.A : NDArray = init_A
-        self.Bs : NDArray = init_Bs
+    def __init__(self, init_pi : np.ndarray, init_A : np.ndarray, init_Bs : np.ndarray, num_emission_symbols : List[int]):        
+        """
+        Initializes an instance of MultiCatEmissionHMM.
+
+        :param init_pi: The initial state probabilities. A 1-D array of shape (num_states,).
+        :type init_pi: np.ndarray
+
+        :param init_A: The state transition probability matrix. A 2-D array of shape (num_states, num_states).
+        :type init_A: np.ndarray
+
+        :param init_Bs: The emission matrices for each state. A 2-D array of shape (num_states, sum(num_emission_symbols)) of concatenated
+                    emission matrices.
+        :type init_Bs: np.ndarray
+
+        :param num_emission_symbols: A list containing the num_emission_symbols of individual sequences in the dataset.
+        :type num_emission_symbols: List[int]
+        """
+        self.pi : np.ndarray = init_pi
+        self.A : np.ndarray = init_A
+        self.Bs : np.ndarray = init_Bs
         self.num_emission_symbols : List[int] = num_emission_symbols
         self.num_states : int = len(init_pi)
 
-    def predict(self, Ys : NDArray) -> NDArray:
+    def predict(self, Ys : np.ndarray) -> np.ndarray:
         """
         Predict the posterior distribution :math:`p(X|Ys, \\theta)` over the hidden
         states, given some observations.
 
-        Parameters:
-        -----------
-        Ys : numpy.ndarray
-            The list of observations. Each observation comes from an individual
+        :param Ys: The list of observations. Each observation comes from an individual
             Categorical distribution. Shape should be (D, sum(self.num_emission_symbols)).
+        :type Ys: np.ndarray
+            
 
-        Returns:
-        --------
-        numpy.ndarray
-            Posterior probabilities over hidden states. Entry [t, i] denotes the
+        :return: Posterior probabilities over hidden states. Entry [t, i] denotes the
             probability of being in state i at timestep t, given all the data
             :math:`p(X_t = i|Ys, \\theta)`.
-
-        Notes:
-        ------
-        This method uses filtering and updating routines to calculate the posterior
-        distribution over hidden states based on the provided observations.
-
-        The algorithm iterates over timesteps, updating and predicting the hidden
-        state probabilities. The final result is the posterior probabilities over
-        hidden states given all the observations.
-
-        Example:
-        ---------
-        ```python
-        # Assuming 'model' is an instance of MultiCatEmissionHMM
-
-        # number of discrete emission symbols
-        num_symbols = 3 
-        observations = np.array([[1, 0, 2], [0, 1, 0], [3, 0, 1]])
-        result = model.predict(observations)
-        ```
-
-        In this example, 'result' would contain the posterior probabilities over
-        hidden states based on the provided observations.
+        :rtype: np.ndarray
         """
 
         # start filtering and updating routine
         timesteps = Ys.shape[0]
-        x_tm1 : NDArray = self.pi
-        predictions : List[NDArray] = [x_tm1]
-        updates : List[NDArray] = []
+        x_tm1 : np.ndarray = self.pi
+        predictions : List[np.ndarray] = [x_tm1]
+        updates : List[np.ndarray] = []
 
         for t in range(timesteps):
             x_updated = self.update_mv(x_tm1, Ys[t, :])
@@ -111,33 +85,20 @@ class MultiCatEmissionHMM(BaseEstimator):
         """
         Perform smoothing to estimate the hidden state probabilities at time t.
 
-        Parameters:
-        -----------
-        t : int
-            The timestep for which smoothing is performed.
+        :param t: The timestep for which smoothing is performed.
+        :type t: int
 
-        x_tp1 : numpy.ndarray
-            The posterior probability distribution over hidden states at time t+1.
+        :param x_tp1: The posterior probability distribution over hidden states at time t+1.
+        :type x_tp1: np.ndarray
 
-        updates : List[numpy.ndarray]
-            List containing the filtered posterior probability distributions for each timestep.
+        :param updates: List containing the filtered posterior probability distributions for each timestep.
+        :type updates: List[np.ndarray]
 
-        predictions : List[numpy.ndarray]
-            List containing the predicted posterior probability distributions for each timestep.
+        :param predictions: List containing the predicted posterior probability distributions for each timestep.
+        :type predictions: List[np.ndarray]
 
-        Returns:
-        --------
-        numpy.ndarray
-            The smoothed posterior probability distribution over hidden states at time t.
-
-        Notes:
-        ------
-        This method performs smoothing to estimate the hidden state probabilities at time t
-        based on the filtered and predicted posterior distributions.
-
-        The smoothing is done by combining the filtered distribution at time t and the predicted
-        distribution at time t+1 using the transition probability matrix. The result is the
-        smoothed posterior probability distribution over hidden states at time t.
+        :return: The smoothed posterior probability distribution over hidden states at time t.
+        :rtype: np.ndarray
         """
         filtered = updates[t]
         predicted = predictions[t + 1]
@@ -151,23 +112,20 @@ class MultiCatEmissionHMM(BaseEstimator):
         """
         Calculate the conditional likelihood p(Y_t|X_t) of an observation sequence for each hidden state.
 
-        Parameters:
-        -----------
-        y_i : numpy.ndarray
-            Observation sequence for the emission matrices.
+        Calculate the conditional likelihood p(Y_t|X_t) of an observation sequence for each hidden state.
 
-        Returns:
-        --------
-        numpy.ndarray
-            The product of likelihoods for the observation sequence for each hidden state.
+        :param y_i: Observation sequence for the emission matrices.
+        :type y_i: np.ndarray
 
-        Notes:
-        ------
-        This method calculates the likelihood of an observation sequence for each hidden state.
-        The observation sequence corresponds to the emission matrices.
+        :return: The product of likelihoods for the observation sequence for each hidden state.
+        :rtype: np.ndarray
 
-        The likelihood is computed by taking the product of the probabilities of each observation
-        given the emission matrix for the corresponding hidden state.
+        :notes: 
+            This method calculates the likelihood of an observation sequence for each hidden state.
+            The observation sequence corresponds to the emission matrices.
+
+            The likelihood is computed by taking the product of the probabilities of each observation
+            given the emission matrix for the corresponding hidden state.
 
         """
         sections = np.insert(np.cumsum(self.num_emission_symbols)[:-1], 0, 0)
@@ -182,31 +140,26 @@ class MultiCatEmissionHMM(BaseEstimator):
         """
         Update the hidden state distribution based on the current observation.
 
-        Parameters:
-        -----------
-        x_tm1 : numpy.ndarray
-            Vector of hidden state distribution from timestep t-1.
+        :param x_tm1: Vector of hidden state distribution from timestep t-1.
+        :type x_tm1: np.ndarray
 
-        y_t : Sequence[int]
-            Sequence of integers, where each integer at index i corresponds to the observation
+        :param y_t: Sequence of integers, where each integer at index i corresponds to the observation
             for the emission matrix at index i.
+        :type y_t: Sequence[int]
 
-        Returns:
-        --------
-        numpy.ndarray
-            The updated posterior probability distribution over hidden states at time t.
+        :return: The updated posterior probability distribution over hidden states at time t.
+        :rtype: np.ndarray
 
-        Notes:
-        ------
-        This method updates the hidden state distribution at time t based on the current observation.
+        :notes:
+            This method updates the hidden state distribution at time t based on the current observation.
 
-        The update is performed by multiplying the likelihood of the observation given each hidden state
-        (calculated using the emission matrices) with the prior probability distribution over hidden states
-        from the previous timestep. The result is the unnormalized posterior probability distribution over
-        hidden states at time t.
+            The update is performed by multiplying the likelihood of the observation given each hidden state
+            (calculated using the emission matrices) with the prior probability distribution over hidden states
+            from the previous timestep. The result is the unnormalized posterior probability distribution over
+            hidden states at time t.
 
-        In this example, 'result' would contain the updated posterior probability distribution over
-        hidden states at the current timestep based on the input observation sequence.
+            In this example, 'result' would contain the updated posterior probability distribution over
+            hidden states at the current timestep based on the input observation sequence.
         """
 
         # likelihood p(y_t | x_t) factorizes into p(y^1_t|x_t) * p(y^2_t|x_t) * ... *  p(y^K_t|x_t)
@@ -222,54 +175,36 @@ class MultiCatEmissionHMM(BaseEstimator):
         """
         Predict the next hidden state probabilities based on the current state.
 
-        Parameters:
-        -----------
-        x_tm1 : numpy.ndarray
-            The probability distribution over hidden states at time t-1.
+        :param x_tm1: The probability distribution over hidden states at time t-1.
+        :type x_tm1: np.ndarray
 
-        Returns:
-        --------
-        numpy.ndarray
-            The predicted probability distribution over hidden states at time t, given all prior observations.
+        :return: The predicted probability distribution over hidden states at time t, given all prior observations.
+        :rtype: np.ndarray
 
-        Raises:
-        -------
-        AssertionError
-            If the input x_tm1 is not a valid probability distribution (sum is not close to 1).
+        :raises AssertionError: If the input x_tm1 is not a valid probability distribution (sum is not close to 1).
 
-        Notes:
-        ------
-        This method calculates the predicted probability distribution over hidden states
-        at the next timestep (t) based on the probability distribution at the current timestep (t-1).
+        :notes:
+            This method calculates the predicted probability distribution over hidden states
+            at the next timestep (t) based on the probability distribution at the current timestep (t-1).
 
-        The prediction is performed by applying the state transition probability matrix (A) to the
-        probability distribution at time t-1. The result is the predicted probability distribution
-        over hidden states at time t.
-
-        Example:
-        ---------
-        ```python
-        # Assuming 'model' is an instance of MultiCatEmissionHMM
-        x_tm1 = np.array([0.2, 0.5, 0.3])
-        result = model._predict(x_tm1)
-        print(result)
-        ```
-
-        In this example, 'result' would contain the predicted probability distribution over
-        hidden states at the next timestep based on the input probability distribution x_tm1.
+            The prediction is performed by applying the state transition probability matrix (A) to the
+            probability distribution at time t-1. The result is the predicted probability distribution
+            over hidden states at time t.
         """
         #check if x_tm1 is a valid probability distribution
         assert np.isclose(x_tm1.sum(), 1), "x_tm1 isn't stochastic, sum != 1"
 
         return self.A.T @ np.atleast_1d(x_tm1)
 
-    def viterbi_mv(self, Ys : NDArray) -> Sequence[int]:
+    def viterbi(self, Ys : np.ndarray) -> Sequence[int]:
         """
         Viterbi algorithm for multivariate discrete emissions.
 
-        NOTE: observations are of shape (N, D) where D is the number of emission signals.
-        The ordering of these signals MUST correspond to the ordering in the list of emission matrices.
+        :param Ys: nd array containing observations. Shape: (N, D)
+        :type Ys: np.ndarray
 
+        :notes: Observations are of shape (N, D) where D is the number of emission signals.
+            The ordering of these signals MUST correspond to the ordering in the list of emission matrices.
         """
 
         # shape: (num_states, num_observations)
@@ -301,7 +236,7 @@ class MultiCatEmissionHMM(BaseEstimator):
 
         return list(reversed(state_sequence_reversed))
     
-    def fit(Ys : NDArray):
+    def fit(Ys : np.ndarray):
         """
             See hmmstudy.ipynb for derivations.
         """
