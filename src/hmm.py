@@ -20,7 +20,7 @@ class MultiCatEmissionHMM(BaseEstimator):
 
     Parameters:
     -----------
-    init_pi : numpy.ndarray
+    *init_pi* : numpy.ndarray
         The initial state probabilities. A 1-D array of shape (num_states,).
         
     init_A : numpy.ndarray
@@ -32,38 +32,6 @@ class MultiCatEmissionHMM(BaseEstimator):
 
     num_emission_symbols : List[int]
         A list containing the num_emission_symbols of individual sequences in the dataset.
-
-    Attributes:
-    -----------
-    pi : numpy.ndarray
-        The initial state probabilities. A 1-D array of shape (num_states,).
-
-    A : numpy.ndarray
-        The state transition probability matrix. A 2-D array of shape (num_states, num_states).
-
-    Bs : numpy.ndarray
-        The emission matrices for each state. A 3-D array of shape (num_states, num_categories, num_categories).
-        Each slice Bs[i] represents the emission matrix for state i.
-
-    num_emission_symbols : List[int]
-        A list containing the num_emission_symbols of individual sequences in the dataset.
-
-    num_states : int
-        The number of states in the Hidden Markov Model.
-
-    Methods:
-    -----------
-    predict(Ys: numpy.ndarray) -> numpy.ndarray:
-        Predict the posterior distribution :math:`p(X|Ys, \\theta)` over the hidden states, given some observations.
-
-    update_mv(x_tm1: numpy.ndarray, y_t: Sequence[int]) -> numpy.ndarray:
-        Update the hidden state distribution based on the current observation.
-
-    _predict(x_tm1: numpy.ndarray) -> numpy.ndarray:
-        Predict the next hidden state probabilities based on the current state.
-
-    likelihood(y_i: numpy.ndarray) -> numpy.ndarray:
-        Calculate the likelihood of an observation sequence for each hidden state.
     """
     
     def __init__(self, init_pi : NDArray, init_A : NDArray, init_Bs : NDArray, num_emission_symbols : List[int]):        
