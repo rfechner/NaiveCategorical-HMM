@@ -7,10 +7,9 @@ with multiple categorical Emissionsignals.
 
 import numpy as np
 
+from tqdm import tqdm
 from typing import List, Sequence
-from sklearn.base import BaseEstimator
-
-class MultiCatEmissionHMM(BaseEstimator):
+class MultiCatEmissionHMM():
     """
     Hidden Markov Model with Multiple Categorical Emissions.
     This class represents a Hidden Markov Model (HMM) where the emissions are modeled
@@ -235,12 +234,97 @@ class MultiCatEmissionHMM(BaseEstimator):
             state_sequence_reversed.append(q_prime)
 
         return list(reversed(state_sequence_reversed))
-    
-    def fit(Ys : np.ndarray):
+
+    def fit(self, YYs : List[np.ndarray]):
+        
         """
-            See hmmstudy.ipynb for derivations.
+            Implementation of the Baum-Welch or EM-Algorithm.
+
+            See https://stephentu.github.io/writeups/hmm-baum-welch-derivation.pdf or the provided
+            jupyter notebook `hmmstudy.ipynb` for derivation.
+
+            fit the parameters pi, A and B_1, ..., B_K of a HMM.
+
         """
-        raise NotImplementedError()
+        NUM_ITER = 10
+        for cur_i in tqdm(range(NUM_ITER)):
+
+            # calculate forward/backward/gamma variables
+            fl, bl, gl = self.forward_lattice(YYs), self.backward_lattice(YYs), self.gamma_lattice(YYs)
+            
+            # ---------------- pi update
+            pi_hat = np.concatenate([gl_i[:, 0] for gl_i in gl], axis=1).sum(axis=1)
+
+            # ---------------- A update
+            # keep track of different sequences
+            Xis = np.empty(size=(len(YYs, self.num_states, self.num_states))) 
+
+            # loop over different observation sequences
+            for i_y, Ys in enumerate(YYs):
+                
+                xi = np.empty(shape=(len(Ys), self.num_states, self.num_states))
+                for t in range(len(Ys) - 1):
+                    alpha_t = fl[:, t]
+                    beta_t = bl[:, t+1] * self.likelihood(Ys[t])
+                    xi_t = np.outer(alpha_t, beta_t) * self.A
+
+                    # normalize
+                    xi_t /= xi_t.sum(axis=1)[:, None]
+                    xi[t, :, :] = xi_t
+                
+                # sum over all timesteps
+                Xis[i_y, :, :] = xi.sum(axis=0)
+            
+            # sum out all observations, then normalize
+            A_hat = Xis.sum(axis=0)
+            A_hat /= A_hat.sum(axis=1)[:, None]
+
+            # ---------------- Bs update
+            indices = np.cumsum(self.num_emission_symbols)[:-1]
+            Bs = np.split(self.Bs, indices_or_sections=indices)
+            Bs_buffer = []
+
+            for B in Bs:
+                num_symbols = B.shape[1]
+                buffer = np.empty(shape=(len(YYs), self.num_states, num_symbols))
+                
+                for k, Ys in enumerate(YYs):
+                    obs = np.array(Ys[:, k])
+                    
+                    for j in range(num_symbols):
+                        mask = np.array(j == obs).astype(np.int64)
+                        _2dmask = np.repeat(mask, self.num_states, axis=0)
+
+                        update_j = gl * _2dmask
+                        update_j /= gl.sum(axis=1)[:, None] # is this even necessary here? we normalize later on...
+                        buffer[k, :, j] = update_j.flatten()
+
+                B_update = buffer.sum(axis=0)
+                B_update /= B_update.sum(axis=1)[:, None] 
+                Bs_buffer.append(B_update)
+
+            Bs_hat = np.concatenate(Bs_buffer, axis=1)
+
+            # TODO: check convergence in parameter space and on likelihood
+
+            self.pi = pi_hat
+            self.A = A_hat
+            self.Bs = Bs_hat
+
+    def forward_lattice(self, YYs : np.ndarray):
+        pass
+
+    def backward_lattice(self, YYs : np.ndarray):
+        pass
+
+    def gamma_lattice(self, YYs : np.ndarray):
+        pass
+
+
+
+
+
+
 
 
 
