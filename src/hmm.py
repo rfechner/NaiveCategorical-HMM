@@ -77,7 +77,7 @@ class MultiCatEmissionHMM():
             x_tp1 = self.smooth(t, x_tp1, updates, predictions)
             smoothed.append(x_tp1)
 
-        smoothed = list(reversed(smoothed))
+        smoothed = np.array(list(reversed(smoothed)))
         return smoothed
 
     def smooth(self, t : int, x_tp1 : np.ndarray, updates, predictions) -> np.ndarray:
@@ -238,13 +238,11 @@ class MultiCatEmissionHMM():
     def fit(self, YYs : List[np.ndarray]):
         
         """
-            Implementation of the Baum-Welch or EM-Algorithm.
+            Implementation of the Baum-Welch or EM-Algorithm for 1) multiple observations of varying lengths
+            and 2) multiple categorically distributed emission signals. Fit the parameters pi, A and B_1, ..., B_K of a HMM.
 
             See https://stephentu.github.io/writeups/hmm-baum-welch-derivation.pdf or the provided
             jupyter notebook `hmmstudy.ipynb` for derivation.
-
-            fit the parameters pi, A and B_1, ..., B_K of a HMM.
-            TODO: compute fl, bl, gl for every Ys in YYs seperately. Fill buffers with results
         """
         NUM_ITER = 10
         for cur_i in tqdm(range(NUM_ITER)):
@@ -252,68 +250,88 @@ class MultiCatEmissionHMM():
             # calculate forward/backward/gamma variables
             fl : List[np.ndarray] = self.forward_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
             bl : np.ndarray = self.backward_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
-            gl : np.ndarray = self.gamma_lattice(fl, bl, YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
+            gl : np.ndarray = self.gamma_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
 
+            #print(f'fl: {fl}\n\nbl: {bl}\n\ngl: {gl}\n\n')
             # ---------------- pi update
-            pi_hat = np.concatenate([gl_i[:, 0] for gl_i in gl], axis=1).sum(axis=1)
+            pi_hat = np.concatenate([gl_i[0, :][:, None] for gl_i in gl], axis=1).sum(axis=1)
+
 
             # ---------------- A update
             # keep track of different sequences
-            Xis = np.empty(size=(len(YYs, self.num_states, self.num_states))) 
+            Xis = np.empty(shape=(len(YYs), self.num_states, self.num_states))
 
             # loop over different observation sequences
-            for i_y, Ys in enumerate(YYs):
+            for ys_i, Ys in enumerate(YYs):
                 
                 xi = np.empty(shape=(len(Ys), self.num_states, self.num_states))
                 for t in range(len(Ys) - 1):
-                    alpha_t = fl[i_y][:, t]
-                    beta_t = bl[i_y][:, t+1] * self.likelihood(Ys[t])
-                    xi_t = np.outer(alpha_t, beta_t) * self.A
+                    alpha_t = fl[ys_i][:, t]
+                    beta_t = bl[ys_i][:, t+1] * self.likelihood(Ys[t])
+                    xi_t = np.outer(alpha_t, beta_t) * self.A # shape (num_states, num_states)
 
                     # normalize
-                    xi_t /= xi_t.sum(axis=1)[:, None]
+                    xi_t /= xi_t.sum(axis=(0, 1))
                     xi[t, :, :] = xi_t
                 
                 # sum over all timesteps
-                Xis[i_y, :, :] = xi.sum(axis=0)
-            
+                Xis[ys_i, :, :] = xi.sum(axis=0)
+            #print(f'Xis: {Xis}')            
             # sum out all observations, then normalize
             A_hat = Xis.sum(axis=0)
+            #print(f'A_hat unnormalized: {A_hat}')
             A_hat /= A_hat.sum(axis=1)[:, None]
 
             # ---------------- Bs update
             indices = np.cumsum(self.num_emission_symbols)[:-1]
-            Bs = np.split(self.Bs, indices_or_sections=indices)
+            Bs = np.split(self.Bs, indices_or_sections=indices, axis=1)
+            #print(f'Bs : {Bs}')
             Bs_buffer = []
 
-            for B in Bs:
+            for i_emission, B in enumerate(Bs):
                 num_symbols = B.shape[1]
-                buffer = np.empty(shape=(len(YYs), self.num_states, num_symbols))
+                buffer_B = np.empty(shape=(len(YYs), self.num_states, num_symbols))
                 
-                for k, Ys in enumerate(YYs):
-                    
-                    # get observations for a single emission symbol k
-                    obs = np.array(Ys[:, k])
-                    
-                    for j in range(num_symbols):
-                        mask = np.array(j == obs).astype(np.int64)
+
+                # Ys is observation of shape (num_obs, num_emissions) where each emission is categorically distributed.
+                for ys_i, Ys in enumerate(YYs):
+
+                    # collect the gamma lattice corresponding to the current observation Ys
+                    gamma_ys_i = gl[ys_i].T # shape (num_states, timesteps)
+                    obs = np.array(Ys[:, i_emission]) # shape (timesteps,)
+
+                    # loop over all individual emission symbols of emission i_emission
+                    for symbol in range(num_symbols):
+
+                        # binary mask of where the observation is equal to the symbol
+                        mask = np.array(symbol == obs).astype(np.int64)[None, :]
                         _2dmask = np.repeat(mask, self.num_states, axis=0)
 
-                        update_j = gl[k] * _2dmask
-                        update_j /= gl[k].sum(axis=1)[:, None] # is this even necessary here? we normalize later on...
-                        buffer[k, :, j] = update_j.flatten()
+                        # mask out gamma_bi where the symbol was observed. Sum out timesteps
+                        update_symbol = (gamma_ys_i * _2dmask).sum(axis=1) # shape (num_states,)
 
-                B_update = buffer.sum(axis=0)
-                B_update /= B_update.sum(axis=1)[:, None] 
+                        # For symbol=0, the update_symbol carries b_{i, 0},
+                        # which is a column vector of the corresponding B matrix
+                        
+                        # normalize 
+                        update_symbol /= gamma_ys_i.sum(axis=1)
+                        buffer_B[ys_i, :, symbol] = update_symbol.flatten()
+
+                B_update = buffer_B.sum(axis=0)
+                #print(f'bupdate : {B_update}')
+                B_update /= B_update.sum(axis=1)[:, None]
+                #print(f'nomralized bupdate : {B_update}') 
                 Bs_buffer.append(B_update)
+                #print(f'Bs_buffer : {Bs_buffer}')
 
             Bs_hat = np.concatenate(Bs_buffer, axis=1)
 
             # TODO: check convergence in parameter space and on likelihood
-
+            #print(f'pi_hat : {pi_hat}\n\nA_hat: {A_hat}\n\nBs_hat: {Bs_hat}\n\n')
             self.pi = pi_hat
             self.A = A_hat
             self.Bs = Bs_hat
+
 
     def forward_lattice(self, YYs : np.ndarray):
         """
@@ -362,7 +380,6 @@ class MultiCatEmissionHMM():
     def gamma_lattice(self, YYs : np.ndarray):
         
         gammas = []
-
         for Ys in YYs:
             gammas.append(self.predict(Ys))
         return gammas
