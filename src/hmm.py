@@ -101,7 +101,10 @@ class MultiCatEmissionHMM():
         """
         filtered = updates[t]
         predicted = predictions[t + 1]
-        u = self.A @ (x_tp1 / predicted)
+        predicted_non_zero = np.where(np.isclose(predicted, 0), predicted, np.ones_like(predicted))
+
+        # TODO: should prolly do all this in log-space..
+        u = self.A @ (x_tp1 / predicted_non_zero)
         ret = filtered * u
 
         #print(f"Filtered: {filtered}, Predicted : {predicted}, A@(x_tp1/pred) : {u}, Ret: {ret}")
@@ -235,7 +238,7 @@ class MultiCatEmissionHMM():
 
         return list(reversed(state_sequence_reversed))
 
-    def fit(self, YYs : List[np.ndarray]):
+    def fit(self, YYs : List[np.ndarray], CTOL=1e-12):
         
         """
             Implementation of the Baum-Welch or EM-Algorithm for 1) multiple observations of varying lengths
@@ -243,14 +246,18 @@ class MultiCatEmissionHMM():
 
             See https://stephentu.github.io/writeups/hmm-baum-welch-derivation.pdf or the provided
             jupyter notebook `hmmstudy.ipynb` for derivation.
+
+            TODO: convergence monitoring for EM
         """
-        NUM_ITER = 10
-        for cur_i in tqdm(range(NUM_ITER)):
+        MAX_ITER = 10
+        PREV_LIKELIHOODS = np.mean([fl_i[:, -1] for fl_i in self.forward_lattice(YYs)], axis=1).sum()
+
+        for cur_i in tqdm(range(MAX_ITER)):
 
             # calculate forward/backward/gamma variables
             fl : List[np.ndarray] = self.forward_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
-            bl : np.ndarray = self.backward_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
-            gl : np.ndarray = self.gamma_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
+            bl : List[np.ndarray] = self.backward_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
+            gl : List[np.ndarray] = self.gamma_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
 
             #print(f'fl: {fl}\n\nbl: {bl}\n\ngl: {gl}\n\n')
             # ---------------- pi update
@@ -271,7 +278,9 @@ class MultiCatEmissionHMM():
                     xi_t = np.outer(alpha_t, beta_t) * self.A # shape (num_states, num_states)
 
                     # normalize
-                    xi_t /= xi_t.sum(axis=(0, 1))
+                    # TODO: check why this can be zero
+                    Z = xi_t.sum(axis=(0, 1))
+                    xi_t /= 1 if np.isclose(Z, 0) else Z
                     xi[t, :, :] = xi_t
                 
                 # sum over all timesteps
@@ -326,12 +335,25 @@ class MultiCatEmissionHMM():
 
             Bs_hat = np.concatenate(Bs_buffer, axis=1)
 
-            # TODO: check convergence in parameter space and on likelihood
-            #print(f'pi_hat : {pi_hat}\n\nA_hat: {A_hat}\n\nBs_hat: {Bs_hat}\n\n')
             self.pi = pi_hat
             self.A = A_hat
             self.Bs = Bs_hat
 
+            fl = self.forward_lattice(YYs)
+            print([fl_i[:, -1] for fl_i in fl])
+            # check convergence
+            CUR_LIKELIHOODS = np.mean([fl_i[:, -1] for fl_i in fl], axis=1).sum()
+
+            print(PREV_LIKELIHOODS, CUR_LIKELIHOODS)
+            PREV_LIKELIHOODS = CUR_LIKELIHOODS
+            """assert CUR_LIKELIHOODS - PREV_LIKELIHOODS >= 0, f"EM encountered an error, likelihood did not increase in iteration step {cur_i}."\
+                 "Possible precision error or bug :("
+
+            if CUR_LIKELIHOODS - PREV_LIKELIHOODS <= CTOL:
+                print(f'Breaking EM at timestep {cur_i}, likelihood increase was below given convergence tolerance {CTOL}')
+                break
+            else:
+                PREV_LIKELIHOODS = CUR_LIKELIHOODS"""
 
     def forward_lattice(self, YYs : np.ndarray):
         """
@@ -356,7 +378,6 @@ class MultiCatEmissionHMM():
             alphas.append(lattice)
 
         return alphas
-
 
     def backward_lattice(self, YYs : np.ndarray):
         
