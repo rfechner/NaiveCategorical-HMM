@@ -244,14 +244,16 @@ class MultiCatEmissionHMM():
             jupyter notebook `hmmstudy.ipynb` for derivation.
 
             fit the parameters pi, A and B_1, ..., B_K of a HMM.
-
+            TODO: compute fl, bl, gl for every Ys in YYs seperately. Fill buffers with results
         """
         NUM_ITER = 10
         for cur_i in tqdm(range(NUM_ITER)):
 
             # calculate forward/backward/gamma variables
-            fl, bl, gl = self.forward_lattice(YYs), self.backward_lattice(YYs), self.gamma_lattice(YYs)
-            
+            fl : List[np.ndarray] = self.forward_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
+            bl : np.ndarray = self.backward_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
+            gl : np.ndarray = self.gamma_lattice(fl, bl, YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
+
             # ---------------- pi update
             pi_hat = np.concatenate([gl_i[:, 0] for gl_i in gl], axis=1).sum(axis=1)
 
@@ -264,8 +266,8 @@ class MultiCatEmissionHMM():
                 
                 xi = np.empty(shape=(len(Ys), self.num_states, self.num_states))
                 for t in range(len(Ys) - 1):
-                    alpha_t = fl[:, t]
-                    beta_t = bl[:, t+1] * self.likelihood(Ys[t])
+                    alpha_t = fl[i_y][:, t]
+                    beta_t = bl[i_y][:, t+1] * self.likelihood(Ys[t])
                     xi_t = np.outer(alpha_t, beta_t) * self.A
 
                     # normalize
@@ -289,14 +291,16 @@ class MultiCatEmissionHMM():
                 buffer = np.empty(shape=(len(YYs), self.num_states, num_symbols))
                 
                 for k, Ys in enumerate(YYs):
+                    
+                    # get observations for a single emission symbol k
                     obs = np.array(Ys[:, k])
                     
                     for j in range(num_symbols):
                         mask = np.array(j == obs).astype(np.int64)
                         _2dmask = np.repeat(mask, self.num_states, axis=0)
 
-                        update_j = gl * _2dmask
-                        update_j /= gl.sum(axis=1)[:, None] # is this even necessary here? we normalize later on...
+                        update_j = gl[k] * _2dmask
+                        update_j /= gl[k].sum(axis=1)[:, None] # is this even necessary here? we normalize later on...
                         buffer[k, :, j] = update_j.flatten()
 
                 B_update = buffer.sum(axis=0)
@@ -312,14 +316,56 @@ class MultiCatEmissionHMM():
             self.Bs = Bs_hat
 
     def forward_lattice(self, YYs : np.ndarray):
-        pass
+        """
+            forward computation of :math:`\\alpha_{r}` where :math:`r` runs over all observed sequences.
+            :math:`\\alpha_{ri}(t) = b_{i}(y_{t})\\sum_j\\alpha_{rj}(t-1) a_{ji}`. In bayesian terms, we're computing
+            :math:`\\alpha_{ri}(t) = p(X_t = i| Y^r_1, \\dots, Y^r_t ; \\theta)`
+
+        """
+
+        alphas = []
+
+        for Ys in YYs:
+            Ys = np.array(Ys)
+            num_timesteps = len(Ys)
+            
+            lattice = np.empty(shape=(self.num_states, num_timesteps))
+            lattice[:, 0] = self.pi * self.likelihood(Ys[0, :])
+
+            for t in range(1, len(Ys)):
+                lattice[:, t] = self.A.T @ np.atleast_1d(lattice[:, t-1]) * self.likelihood(Ys[t, 0])
+            
+            alphas.append(lattice)
+
+        return alphas
+
 
     def backward_lattice(self, YYs : np.ndarray):
-        pass
+        
+        betas = []
+
+        for Ys in YYs:
+            Ys = np.array(Ys)
+            num_timesteps = len(Ys)
+            
+            lattice = np.empty(shape=(self.num_states, num_timesteps))
+            lattice[:, -1] = np.ones(shape=(self.num_states,))
+
+            # loop backwards
+            for t in range(len(Ys) - 2, -1, -1):
+                lattice[:, t] = self.A @ (lattice[:, t+1] * self.likelihood(Ys[t+1, 0]))
+            
+            betas.append(lattice)
+
+        return betas
 
     def gamma_lattice(self, YYs : np.ndarray):
-        pass
+        
+        gammas = []
 
+        for Ys in YYs:
+            gammas.append(self.predict(Ys))
+        return gammas
 
 
 
