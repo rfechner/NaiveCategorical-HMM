@@ -101,9 +101,10 @@ class MultiCatEmissionHMM():
         """
         filtered = updates[t]
         predicted = predictions[t + 1]
-        predicted_non_zero = np.where(np.isclose(predicted, 0), predicted, np.ones_like(predicted))
 
-        # TODO: should prolly do all this in log-space..
+        #TODO: do all computation in log-space
+        predicted_non_zero = np.where(np.isclose(predicted, 0), np.zeros_like(predicted) + 1e-8, predicted)
+
         u = self.A @ (x_tp1 / predicted_non_zero)
         ret = filtered * u
 
@@ -249,7 +250,7 @@ class MultiCatEmissionHMM():
 
             TODO: convergence monitoring for EM
         """
-        MAX_ITER = 10
+        MAX_ITER = 100
         PREV_LIKELIHOODS = np.mean([fl_i[:, -1] for fl_i in self.forward_lattice(YYs)], axis=1).sum()
 
         for cur_i in tqdm(range(MAX_ITER)):
@@ -340,11 +341,11 @@ class MultiCatEmissionHMM():
             self.Bs = Bs_hat
 
             fl = self.forward_lattice(YYs)
-            print([fl_i[:, -1] for fl_i in fl])
+            #print([fl_i[:, -1] for fl_i in fl])
             # check convergence
             CUR_LIKELIHOODS = np.mean([fl_i[:, -1] for fl_i in fl], axis=1).sum()
 
-            print(PREV_LIKELIHOODS, CUR_LIKELIHOODS)
+            print(CUR_LIKELIHOODS)
             PREV_LIKELIHOODS = CUR_LIKELIHOODS
             """assert CUR_LIKELIHOODS - PREV_LIKELIHOODS >= 0, f"EM encountered an error, likelihood did not increase in iteration step {cur_i}."\
                  "Possible precision error or bug :("
