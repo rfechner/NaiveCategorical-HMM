@@ -133,7 +133,6 @@ class MultiCatEmissionHMM():
         """
         sections = np.insert(np.cumsum(self.num_emission_symbols)[:-1], 0, 0)
         indeces = y_i + sections
-        
         arrs = self.Bs[:, indeces]
 
         return np.prod(arrs, axis=1).squeeze()
@@ -251,28 +250,39 @@ class MultiCatEmissionHMM():
             TODO: convergence monitoring for EM
         """
         MAX_ITER = 100
-        PREV_LIKELIHOODS = np.mean([fl_i[:, -1] for fl_i in self.forward_lattice(YYs)], axis=1).sum()
+        PREV_LIKELIHOODS = 0
 
         for cur_i in tqdm(range(MAX_ITER)):
 
             # calculate forward/backward/gamma variables
             fl : List[np.ndarray] = self.forward_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
+
+            # check convergence
+            CUR_LIKELIHOODS = np.mean([fl_i[:, -1] for fl_i in fl], axis=1).sum()
+
+            if CUR_LIKELIHOODS - PREV_LIKELIHOODS <= CTOL:
+                print(f'Breaking EM at timestep {cur_i}, likelihood increase was below given convergence tolerance {CTOL}')
+                print('Note: Current implementation is not numerically stable. Convergence may be influenced by instability.')
+                break
+            else:
+                PREV_LIKELIHOODS = CUR_LIKELIHOODS
+
             bl : List[np.ndarray] = self.backward_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
             gl : List[np.ndarray] = self.gamma_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
 
             #print(f'fl: {fl}\n\nbl: {bl}\n\ngl: {gl}\n\n')
             # ---------------- pi update
-            pi_hat = np.concatenate([gl_i[0, :][:, None] for gl_i in gl], axis=1).sum(axis=1)
+            pi_hat = np.concatenate([gl_i[0, :][:, None] for gl_i in gl], axis=1).sum(axis=1) / len(gl)
 
 
             # ---------------- A update
             # keep track of different sequences
-            Xis = np.empty(shape=(len(YYs), self.num_states, self.num_states))
+            Xis = np.zeros(shape=(len(YYs), self.num_states, self.num_states))
 
             # loop over different observation sequences
             for ys_i, Ys in enumerate(YYs):
                 
-                xi = np.empty(shape=(len(Ys), self.num_states, self.num_states))
+                xi = np.zeros(shape=(len(Ys), self.num_states, self.num_states))
                 for t in range(len(Ys) - 1):
                     alpha_t = fl[ys_i][:, t]
                     beta_t = bl[ys_i][:, t+1] * self.likelihood(Ys[t])
@@ -281,7 +291,11 @@ class MultiCatEmissionHMM():
                     # normalize
                     # TODO: check why this can be zero
                     Z = xi_t.sum(axis=(0, 1))
-                    xi_t /= 1 if np.isclose(Z, 0) else Z
+                    if np.isclose(Z, 0):
+                        denom = 1
+                    else:
+                        denom = Z
+                    xi_t /= denom
                     xi[t, :, :] = xi_t
                 
                 # sum over all timesteps
@@ -300,7 +314,7 @@ class MultiCatEmissionHMM():
 
             for i_emission, B in enumerate(Bs):
                 num_symbols = B.shape[1]
-                buffer_B = np.empty(shape=(len(YYs), self.num_states, num_symbols))
+                buffer_B = np.zeros(shape=(len(YYs), self.num_states, num_symbols))
                 
 
                 # Ys is observation of shape (num_obs, num_emissions) where each emission is categorically distributed.
@@ -324,7 +338,12 @@ class MultiCatEmissionHMM():
                         # which is a column vector of the corresponding B matrix
                         
                         # normalize 
-                        update_symbol /= gamma_ys_i.sum(axis=1)
+                        # TODO: this can be zero if for one state, prob of visiting is zero
+                        # throughout all timesteps.
+                        
+                        Z = gamma_ys_i.sum(axis=1)
+                        Z = np.where(np.isclose(Z, 0, atol=1e-10), np.ones_like(Z), Z)
+                        update_symbol /= Z
                         buffer_B[ys_i, :, symbol] = update_symbol.flatten()
 
                 B_update = buffer_B.sum(axis=0)
@@ -339,22 +358,7 @@ class MultiCatEmissionHMM():
             self.pi = pi_hat
             self.A = A_hat
             self.Bs = Bs_hat
-
-            fl = self.forward_lattice(YYs)
-            #print([fl_i[:, -1] for fl_i in fl])
-            # check convergence
-            CUR_LIKELIHOODS = np.mean([fl_i[:, -1] for fl_i in fl], axis=1).sum()
-
-            print(CUR_LIKELIHOODS)
-            PREV_LIKELIHOODS = CUR_LIKELIHOODS
-            """assert CUR_LIKELIHOODS - PREV_LIKELIHOODS >= 0, f"EM encountered an error, likelihood did not increase in iteration step {cur_i}."\
-                 "Possible precision error or bug :("
-
-            if CUR_LIKELIHOODS - PREV_LIKELIHOODS <= CTOL:
-                print(f'Breaking EM at timestep {cur_i}, likelihood increase was below given convergence tolerance {CTOL}')
-                break
-            else:
-                PREV_LIKELIHOODS = CUR_LIKELIHOODS"""
+            
 
     def forward_lattice(self, YYs : np.ndarray):
         """
@@ -370,11 +374,11 @@ class MultiCatEmissionHMM():
             Ys = np.array(Ys)
             num_timesteps = len(Ys)
             
-            lattice = np.empty(shape=(self.num_states, num_timesteps))
+            lattice = np.zeros(shape=(self.num_states, num_timesteps))
             lattice[:, 0] = self.pi * self.likelihood(Ys[0, :])
 
             for t in range(1, len(Ys)):
-                lattice[:, t] = self.A.T @ np.atleast_1d(lattice[:, t-1]) * self.likelihood(Ys[t, 0])
+                lattice[:, t] = self.A.T @ np.atleast_1d(lattice[:, t-1]) * self.likelihood(Ys[t, :])
             
             alphas.append(lattice)
 
@@ -388,12 +392,12 @@ class MultiCatEmissionHMM():
             Ys = np.array(Ys)
             num_timesteps = len(Ys)
             
-            lattice = np.empty(shape=(self.num_states, num_timesteps))
+            lattice = np.zeros(shape=(self.num_states, num_timesteps))
             lattice[:, -1] = np.ones(shape=(self.num_states,))
 
             # loop backwards
             for t in range(len(Ys) - 2, -1, -1):
-                lattice[:, t] = self.A @ (lattice[:, t+1] * self.likelihood(Ys[t+1, 0]))
+                lattice[:, t] = self.A @ (lattice[:, t+1] * self.likelihood(Ys[t+1, :]))
             
             betas.append(lattice)
 
@@ -406,8 +410,43 @@ class MultiCatEmissionHMM():
             gammas.append(self.predict(Ys))
         return gammas
 
+# debug
+if __name__ == '__main__':
 
+    np.random.seed(42)
 
+    B_1 = np.array([
+    [0.5, 0.2, 0.3],
+    [0.0, 0.2, 0.8]
+    ])
+
+    B_2 = np.array([
+        [0.6, 0.4],
+        [0.1, 0.9]
+    ])
+
+    Bs = np.concatenate([B_1, B_2], axis=1)
+    Bs
+    hmm = MultiCatEmissionHMM(
+        init_A = np.array([
+            [0.7, 0.3],
+            [0.2, 0.8]
+        ]),
+
+        init_Bs = Bs,
+
+        init_pi = np.array(
+            [0.5, 0.5]
+        ),
+
+        num_emission_symbols = np.array(
+            [3, 2]
+        )
+    )
+    observations = [np.array([[0, 1], [1, 0], [2, 1], [1, 0]]),
+                    np.array([[0, 1], [1, 0], [0, 0], [1, 1], [1, 0]])]
+    
+    hmm.fit(observations)
 
 
 
