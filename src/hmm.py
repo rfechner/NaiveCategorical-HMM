@@ -9,7 +9,8 @@ import numpy as np
 
 from tqdm import tqdm
 from typing import List, Sequence
-class MultiCatEmissionHMM():
+
+class MultiCatHMM():
     """
     Hidden Markov Model with Multiple Categorical Emissions.
     This class represents a Hidden Markov Model (HMM) where the emissions are modeled
@@ -241,20 +242,24 @@ class MultiCatEmissionHMM():
     def fit(self, YYs : List[np.ndarray], CTOL=1e-12):
         
         """
-            Implementation of the Baum-Welch or EM-Algorithm for 1) multiple observations of varying lengths
-            and 2) multiple categorically distributed emission signals. Fit the parameters pi, A and B_1, ..., B_K of a HMM.
+        Implementation of the Baum-Welch or EM-Algorithm for 1) multiple observations of varying lengths
+        and 2) multiple categorically distributed emission signals. Fit the parameters pi, A and B_1, ..., B_K of a HMM.
 
-            See https://stephentu.github.io/writeups/hmm-baum-welch-derivation.pdf or the provided
-            jupyter notebook `hmmstudy.ipynb` for derivation.
+        :param YYs: List of observations. Each observation may have multiple emission signals. 
+                    Shape: (num_obs, timesteps, num_emissions). Note: `timesteps` may vary.
+        :type YYs: List[np.ndarray]
 
-            TODO: convergence monitoring for EM
+        :notes: 
+        See https://stephentu.github.io/writeups/hmm-baum-welch-derivation.pdf or the provided
+        jupyter notebook `hmmstudy.ipynb` for derivation.
+
         """
         MAX_ITER = 100
         PREV_LIKELIHOODS = 0
 
         for cur_i in tqdm(range(MAX_ITER)):
 
-            # calculate forward/backward/gamma variables
+            # calculate forward lattice
             fl : List[np.ndarray] = self.forward_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
 
             # check convergence
@@ -267,10 +272,10 @@ class MultiCatEmissionHMM():
             else:
                 PREV_LIKELIHOODS = CUR_LIKELIHOODS
 
+            # calculate backward lattice, gamma lattice
             bl : List[np.ndarray] = self.backward_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
             gl : List[np.ndarray] = self.gamma_lattice(YYs) # List of np.ndarrays of shape (num_states, num_timesteps)
 
-            #print(f'fl: {fl}\n\nbl: {bl}\n\ngl: {gl}\n\n')
             # ---------------- pi update
             pi_hat = np.concatenate([gl_i[0, :][:, None] for gl_i in gl], axis=1).sum(axis=1) / len(gl)
 
@@ -289,27 +294,21 @@ class MultiCatEmissionHMM():
                     xi_t = np.outer(alpha_t, beta_t) * self.A # shape (num_states, num_states)
 
                     # normalize
-                    # TODO: check why this can be zero
                     Z = xi_t.sum(axis=(0, 1))
-                    if np.isclose(Z, 0):
-                        denom = 1
-                    else:
-                        denom = Z
-                    xi_t /= denom
+                    Z = np.where(np.isclose(Z, 0, atol=1e-10), np.ones_like(Z), Z)
+                    xi_t /= Z
                     xi[t, :, :] = xi_t
                 
                 # sum over all timesteps
                 Xis[ys_i, :, :] = xi.sum(axis=0)
-            #print(f'Xis: {Xis}')            
+
             # sum out all observations, then normalize
             A_hat = Xis.sum(axis=0)
-            #print(f'A_hat unnormalized: {A_hat}')
             A_hat /= A_hat.sum(axis=1)[:, None]
 
             # ---------------- Bs update
             indices = np.cumsum(self.num_emission_symbols)[:-1]
             Bs = np.split(self.Bs, indices_or_sections=indices, axis=1)
-            #print(f'Bs : {Bs}')
             Bs_buffer = []
 
             for i_emission, B in enumerate(Bs):
@@ -317,7 +316,8 @@ class MultiCatEmissionHMM():
                 buffer_B = np.zeros(shape=(len(YYs), self.num_states, num_symbols))
                 
 
-                # Ys is observation of shape (num_obs, num_emissions) where each emission is categorically distributed.
+                # Ys is observation of shape (num_obs, num_emissions)
+                # where each emission is categorically distributed.
                 for ys_i, Ys in enumerate(YYs):
 
                     # collect the gamma lattice corresponding to the current observation Ys
@@ -338,28 +338,21 @@ class MultiCatEmissionHMM():
                         # which is a column vector of the corresponding B matrix
                         
                         # normalize 
-                        # TODO: this can be zero if for one state, prob of visiting is zero
-                        # throughout all timesteps.
-                        
                         Z = gamma_ys_i.sum(axis=1)
                         Z = np.where(np.isclose(Z, 0, atol=1e-10), np.ones_like(Z), Z)
                         update_symbol /= Z
                         buffer_B[ys_i, :, symbol] = update_symbol.flatten()
 
                 B_update = buffer_B.sum(axis=0)
-                #print(f'bupdate : {B_update}')
                 B_update /= B_update.sum(axis=1)[:, None]
-                #print(f'nomralized bupdate : {B_update}') 
                 Bs_buffer.append(B_update)
-                #print(f'Bs_buffer : {Bs_buffer}')
-
+                
             Bs_hat = np.concatenate(Bs_buffer, axis=1)
 
             self.pi = pi_hat
             self.A = A_hat
             self.Bs = Bs_hat
             
-
     def forward_lattice(self, YYs : np.ndarray):
         """
             forward computation of :math:`\\alpha_{r}` where :math:`r` runs over all observed sequences.
@@ -427,7 +420,7 @@ if __name__ == '__main__':
 
     Bs = np.concatenate([B_1, B_2], axis=1)
     Bs
-    hmm = MultiCatEmissionHMM(
+    hmm = MultiCatHMM(
         init_A = np.array([
             [0.7, 0.3],
             [0.2, 0.8]
