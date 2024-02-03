@@ -1,6 +1,6 @@
-# HMM + Naive Bayes: HMM with multiple independant observations
+# HMM + Naive Bayes: HMM with multiple independent observations
 
-A simple python implementation of Hidden Markov Models, capable of dealing with **multiple independant categorically distributed** emission signals $Y^{(k)} \sim \text{Cat}(p^{(k)})$ per timestep (not to be confused with multiple observation sequences, although this implementation supports these aswell).
+A simple python implementation of Hidden Markov Models, capable of dealing with **multiple independent categorically distributed** emission signals $Y^{(k)} \sim \text{Cat}(p^{(k)})$ per timestep (not to be confused with multiple observation sequences, although this implementation supports these aswell).
 
 ## Example usage
 ```python
